@@ -1,65 +1,30 @@
+//== Libraries ==
 #include <Nextion.h>
 #include <INextionColourable.h>
 #include <SoftwareSerial.h>
+
+//== Classes ==
 #include "Point.h"
 #include "Camera.h"
+#include "NexGpio.h"
 
+//== Nextion Variables ==
 SoftwareSerial nextionSerial(10, 11); // RX, TX
-
 Nextion nex(nextionSerial);
-//int dist = 5;
-//NexGpio gpio; This does not exists in NeoNextion, so we'll read gpio manually.
+NexGpio gpio;
 
+//== Drawing Variables ==
 uint32_t bgColor = NEX_COL_BLACK;
 uint32_t foreColor = NEX_COL_YELLOW;
-float xRot, xRotOld;
-float yRot, yRotOld;
-
-Camera cam = Camera(Point(0, 0, -5), Point(0, 0, 0));
-
-// Does not seem to work, or maybe software serial can only go up to 9600
-void SetBaud19200()
-{
-  String cmd = "set bauds=19200"; // 38400 is too fast for software serial
-  nex.sendCommand(cmd.c_str());
-}
-
-void pin_mode(uint32_t port, uint32_t mode, uint32_t control_id)
-{
-  char buf;
-  String cmd;
-
-  cmd += "cfgpio ";
-  buf = port + '0';
-  cmd += buf;
-  cmd += ',';
-  buf = mode + '0';
-  cmd += buf;
-  cmd += ',';
-  buf = control_id = '0';
-  cmd += buf;
-
-  nex.sendCommand(cmd.c_str());
-}
-
-uint16_t getGpio(int port)
-{
-  String cmd = "get pio";
-  char buf = port + '0';
-  cmd += buf;
-
-  nex.sendCommand(cmd.c_str());
-  uint32_t val;
-  if (nex.receiveNumber(&val))
-    return val;
-  else
-    return 0;
-}
-
 int xMax = 479;
 int yMax = 319;
 int x0 = xMax / 2;
 int y0 = yMax / 2;
+float xRot, xRotOld;
+float yRot, yRotOld;
+
+//== 3D Variables ==
+Camera cam = Camera(Point(0, 0, -5), Point(0, 0, 0));
 
 Point vertexes[] = {
   Point(-1, -1, -1), Point(+1, -1, -1), Point(+1, +1, -1), Point(-1, +1, -1),
@@ -74,6 +39,14 @@ uint16_t edges[][2] = {
 };
 int nEdges = sizeof(edges) / (2 * sizeof(uint16_t));
 
+//== Setup Routines ==
+// Does not seem to work, or maybe software serial can only go up to 9600
+void SetBaud19200()
+{
+  String cmd = "set bauds=19200"; // 38400 is too fast for software serial
+  nex.sendCommand(cmd.c_str());
+}
+
 void MoveCubeAwayFromOrigin(int howFarInZ)
 {
   for (int i = 0; i < nVertices; i++)
@@ -82,12 +55,30 @@ void MoveCubeAwayFromOrigin(int howFarInZ)
   }
 }
 
-void DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint32_t colour)
+void setup()
 {
-  //Serial.println(nex.drawLine(x1, y1, x2, y2, colour));
-  nex.drawLine(x1, y1, x2, y2, colour);
+  Serial.begin(9600);
+
+  nextionSerial.begin(9600);
+  //SetBaud19200();
+
+  nex.init();
+
+  gpio.pin_mode(nex, 0, 0, 0);
+  gpio.pin_mode(nex, 1, 0, 0);
+  gpio.pin_mode(nex, 2, 0, 0);
+  gpio.pin_mode(nex, 3, 0, 0);
+  gpio.pin_mode(nex, 4, 0, 0);
+  gpio.pin_mode(nex, 5, 0, 0);
+
+  //Serial.println(nex.clear(bgColor));
+  nex.clear(bgColor);
+
+  //MoveCubeAwayFromOrigin(dist);
+  DrawCube(foreColor); 
 }
 
+//== Drawing Routines ==
 void DrawCircle(uint16_t x1, uint16_t y1, uint16_t r, uint32_t colour)
 {
   //Serial.println(nex.drawCircle(x1, y1, r, colour));
@@ -106,7 +97,6 @@ uint16_t ClipY(float y)
 
 void DrawLine(Point p1, Point p2, uint32_t colour)
 {
-  //Serial.println(nex.drawLine(p1.x, p1.y, p2.x, p2.y, colour));
   nex.drawLine(ClipX(p1.x), ClipY(p1.y), ClipX(p2.x), ClipY(p2.y), colour);
 }
 
@@ -163,31 +153,6 @@ void DrawCube(uint32_t kolor)
   }
 }
 
-void setup()
-{
-  Serial.begin(9600);
-
-  nextionSerial.begin(9600);
-  //SetBaud19200();
-
-  nex.init();
-
-  pin_mode(0, 0, 0);
-  pin_mode(1, 0, 0);
-  pin_mode(2, 0, 0);
-  pin_mode(3, 0, 0);
-  pin_mode(4, 0, 0);
-  pin_mode(5, 0, 0);
-
-  //Serial.println(nex.clear(bgColor));
-  nex.clear(bgColor);
-
-  //MoveCubeAwayFromOrigin(dist);
-  DrawCube(foreColor);
-
-  
-}
-
 void Refresh()
 {
   nex.clear(bgColor);
@@ -197,41 +162,36 @@ void Refresh()
 void loop()
 {
   int stp = 2;
-  if (getGpio(5) == 0) {
-    //DrawCube(NEX_COL_BLACK);
+  if (gpio.getGpio(nex,5) == 0) {
     cam.Update(stp, 'a');
     Refresh();
   }
-  if (getGpio(2) == 0) {
-    //DrawCube(NEX_COL_BLACK);
+  if (gpio.getGpio(nex,2) == 0) {
     cam.Update(stp, 'd');
     Refresh();
   }
-  if (getGpio(4) == 0) {
-    //DrawCube(NEX_COL_BLACK);
+  if (gpio.getGpio(nex,4) == 0) {
     cam.Update(stp, 'w');
     Refresh();
   }
-  if (getGpio(3) == 0) {
-    //DrawCube(NEX_COL_BLACK);
+  if (gpio.getGpio(nex,3) == 0) {
     cam.Update(stp, 's');
     Refresh();
   }
-  if (getGpio(0) == 0) {
-    //DrawCube(NEX_COL_BLACK);
+  if (gpio.getGpio(nex,0) == 0) {
     cam.Update(stp, 'q');
     Refresh();
   }
-  if (getGpio(1) == 0) {
-    //DrawCube(NEX_COL_BLACK);
+  if (gpio.getGpio(nex,1) == 0) {
     cam.Update(stp, 'e');
     Refresh();
   }
 
-  //xRot =  map(analogRead(A0), 0, 1023, 0, PI*100 / 2)/100;
-  xRot =  -PI/2 + (PI * analogRead(A0))/1023;
+  xRot =  map(analogRead(A0), 0, 1023, -PI/2, PI/ 2);
+  //xRot =  -PI/2 + (PI * analogRead(A0))/1023;
   yRot =  -PI/2 + (PI * analogRead(A1))/1023;
-  if (xRot != xRotOld || yRot != yRotOld) {
+  
+  if ( fabs(xRot - xRotOld) > 0.1 || fabs(yRot - yRotOld)> 0.1) {
     Refresh();
     xRotOld = xRot;
     yRotOld = yRot;
