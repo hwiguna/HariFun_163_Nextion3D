@@ -1,11 +1,11 @@
 class Point
 {
   public:
-    int x;
-    int y;
-    int z;
+    float x;
+    float y;
+    float z;
     Point() {}
-    Point(int xx, int yy, int zz) 
+    Point(float xx, float yy, float zz) 
     {
       x = xx;
       y = yy;

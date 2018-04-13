@@ -7,7 +7,7 @@
 SoftwareSerial nextionSerial(10, 11); // RX, TX
 
 Nextion nex(nextionSerial);
-int dist = 3;
+//int dist = 5;
 //NexGpio gpio; This does not exists in NeoNextion, so we'll read gpio manually.
 
 uint32_t bgColor = NEX_COL_BLACK;
@@ -94,10 +94,20 @@ void DrawCircle(uint16_t x1, uint16_t y1, uint16_t r, uint32_t colour)
   nex.drawCircle(x1, y1, r, colour);
 }
 
+uint16_t ClipX(float y)
+{
+  return (max(min(y,xMax),0));
+}
+
+uint16_t ClipY(float y)
+{
+  return (max(min(y,yMax),0));
+}
+
 void DrawLine(Point p1, Point p2, uint32_t colour)
 {
   //Serial.println(nex.drawLine(p1.x, p1.y, p2.x, p2.y, colour));
-  nex.drawLine(p1.x, p1.y, p2.x, p2.y, colour);
+  nex.drawLine(ClipX(p1.x), ClipY(p1.y), ClipX(p2.x), ClipY(p2.y), colour);
 }
 
 Point rotate2D(Point p, float rot)
@@ -143,13 +153,13 @@ void DrawCube(uint32_t kolor)
       vertex.y = t.x;
       vertex.z = t.y;
 
-      int f = y0 / vertex.z; // 
+      float f = (vertex.z==0) ? y0 : (y0 / vertex.z); // Further (larger z) will result in smaller f, which makes the point closer to origin making it look smaller
       int x = x0 + vertex.x * f;
       int y = y0 + vertex.y * f;
       points[v] = Point(x, y, 0);
     }
 
-    DrawLine(points[0], points[1], kolor); // Draw the transformed edge
+    DrawLine(points[0],points[1],foreColor);
   }
 }
 
@@ -172,7 +182,7 @@ void setup()
   //Serial.println(nex.clear(bgColor));
   nex.clear(bgColor);
 
-  MoveCubeAwayFromOrigin(dist);
+  //MoveCubeAwayFromOrigin(dist);
   DrawCube(foreColor);
 
   
@@ -186,7 +196,7 @@ void Refresh()
 
 void loop()
 {
-  int stp = 1;
+  int stp = 2;
   if (getGpio(5) == 0) {
     //DrawCube(NEX_COL_BLACK);
     cam.Update(stp, 'a');
@@ -221,10 +231,11 @@ void loop()
   //xRot =  map(analogRead(A0), 0, 1023, 0, PI*100 / 2)/100;
   xRot =  -PI/2 + (PI * analogRead(A0))/1023;
   yRot =  -PI/2 + (PI * analogRead(A1))/1023;
-  //if (abs(xRot - xRotOld) > 0.1) {
+  if (xRot != xRotOld || yRot != yRotOld) {
     Refresh();
     xRotOld = xRot;
-  //}
+    yRotOld = yRot;
+  }
 
   delay(100);
   //nex.poll();
