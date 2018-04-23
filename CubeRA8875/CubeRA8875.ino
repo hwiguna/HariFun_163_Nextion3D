@@ -23,8 +23,8 @@ uint32_t bgColor = RA8875_BLACK;
 uint32_t foreColor = RA8875_YELLOW;
 int xMax = 799; //479;
 int yMax = 479; //319;
-int x0 = xMax / 2;
-int y0 = yMax / 2;
+int xOrigin = xMax / 2;
+int yOrigin = yMax / 2;
 float xRot, xRotOld;
 float yRot, yRotOld;
 
@@ -120,9 +120,9 @@ void DrawCube(uint32_t kolor)
   //  //-- Draw vertices --
   //  for (int i = 0; i < nVertices; i++)
   //  {
-  //    int f = y0 / vertexes[i].z;
-  //    int x = x0 + vertexes[i].x * f;
-  //    int y = y0 + vertexes[i].y * f;
+  //    int f = yOrigin / vertexes[i].z;
+  //    int x = xOrigin + vertexes[i].x * f;
+  //    int y = yOrigin + vertexes[i].y * f;
   //
   //    DrawCircle(x, y, 5, foreColor);
   //  }
@@ -151,9 +151,9 @@ void DrawCube(uint32_t kolor)
       vertex.y = t.x;
       vertex.z = t.y;
 
-      float f = (vertex.z==0) ? y0 : (y0 / vertex.z); // Further (larger z) will result in smaller f, which makes the point closer to origin making it look smaller
-      int x = x0 + vertex.x * f;
-      int y = y0 + vertex.y * f;
+      float f = (vertex.z==0) ? yOrigin : (yOrigin / vertex.z); // Further (larger z) will result in smaller f, which makes the point closer to origin making it look smaller
+      int x = xOrigin + vertex.x * f;
+      int y = yOrigin + vertex.y * f;
       points[v] = Point3D(x, y, 0);
     }
 
