@@ -21,10 +21,10 @@ Adafruit_RA8875 tft = Adafruit_RA8875(RA8875_CS, RA8875_RESET);
 //== Drawing Variables ==
 uint32_t bgColor = RA8875_BLACK;
 uint32_t foreColor = RA8875_YELLOW;
-int xMax = 799; //479;
-int yMax = 479; //319;
-int xOrigin = xMax / 2;
-int yOrigin = yMax / 2;
+float xMax = 799; //479;
+float yMax = 479; //319;
+float xOrigin = xMax / 2;
+float yOrigin = yMax / 2;
 float xRot, xRotOld;
 float yRot, yRotOld;
 
@@ -92,20 +92,67 @@ void DrawCircle(uint16_t x1, uint16_t y1, uint16_t r, uint32_t colour)
   tft.drawCircle(x1, y1, r, colour);
 }
 
-uint16_t ClipX(float y)
-{
-  return (max(min(y,xMax),0));
-}
+//uint16_t ClipX(float y)
+//{
+//  return (max(min(y,xMax),0));
+//}
+//
+//uint16_t ClipY(float y)
+//{
+//  return (max(min(y,yMax),0));
+//}
 
-uint16_t ClipY(float y)
+// Originally from: https://stackoverflow.com/questions/11194876/clip-line-to-screen-coordinates
+// Liang-Barsky function by Daniel White @ http://www.skytopia.com/project/articles/compsci/clipping.html
+// This function inputs 8 numbers, and outputs 4 new numbers (plus a boolean value to say whether the clipped line is drawn at all).
+//
+bool LiangBarsky (float edgeLeft, float edgeRight, float edgeBottom, float edgeTop,   // Define the x/y clipping values for the border.
+                  float x0src, float y0src, float x1src, float y1src,                 // Define the start and end points of the line.
+                  float &x0clip, float &y0clip, float &x1clip, float &y1clip)         // The output values, so declare these outside.
 {
-  return (max(min(y,yMax),0));
+
+    float t0 = 0.0;    float t1 = 1.0;
+    float xdelta = x1src-x0src;
+    float ydelta = y1src-y0src;
+    float p,q,r;
+
+    for(int edge=0; edge<4; edge++) {   // Traverse through left, right, bottom, top edges.
+        if (edge==0) {  p = -xdelta;    q = -(edgeLeft-x0src);  }
+        if (edge==1) {  p = xdelta;     q =  (edgeRight-x0src); }
+        if (edge==2) {  p = -ydelta;    q = -(edgeBottom-y0src);}
+        if (edge==3) {  p = ydelta;     q =  (edgeTop-y0src);   }   
+        r = q/p;
+        if(p==0 && q<0) return false;   // Don't draw line at all. (parallel line outside)
+
+        if(p<0) {
+            if(r>t1) return false;         // Don't draw line at all.
+            else if(r>t0) t0=r;            // Line is clipped!
+        } else if(p>0) {
+            if(r<t0) return false;      // Don't draw line at all.
+            else if(r<t1) t1=r;         // Line is clipped!
+        }
+    }
+
+    x0clip = x0src + t0*xdelta;
+    y0clip = y0src + t0*ydelta;
+    x1clip = x0src + t1*xdelta;
+    y1clip = y0src + t1*ydelta;
+
+    return true;        // (clipped) line is drawn
 }
 
 void DrawLine(Point3D p1, Point3D p2, uint32_t colour)
 {
-  //nex.drawLine(ClipX(p1.x), ClipY(p1.y), ClipX(p2.x), ClipY(p2.y), colour);
-  tft.drawLine(ClipX(p1.x), ClipY(p1.y), ClipX(p2.x), ClipY(p2.y), colour);
+  float x1c=0;
+  float y1c=0;
+  float x2c=0;
+  float y2c=0;
+
+  bool isVisible = LiangBarsky (0, xMax, 0, yMax,   // Define the x/y clipping values for the border.
+                   p1.x, p1.y,  p2.x, p2.y,                 // Define the start and end points of the line.
+                   x1c,  y1c,  x2c, y2c);         // The output values, so declare these outside.
+
+  if (isVisible) tft.drawLine(x1c,y1c, x2c,y2c, colour);
 }
 
 Point3D rotate2D(Point3D p, float rot)
@@ -195,9 +242,8 @@ void loop()
     Refresh();
   }
 
-  xRot =  map(analogRead(A0), 0, 1023, -PI/2, PI/ 2);
-  //xRot =  -PI/2 + (PI * analogRead(A0))/1023;
-  yRot =  -PI/2 + (PI * analogRead(A1))/1023;
+  xRot =  -PI/2 + (PI * analogRead(A0))/1023;
+  yRot =  -PI/4 + (PI/2 * analogRead(A1))/1023;
   
   if ( fabs(xRot - xRotOld) > 0.1 || fabs(yRot - yRotOld)> 0.1) {
     Refresh();
